@@ -1,0 +1,37 @@
+pipeline {
+    agent any
+    stages {
+        stage('Git download') {
+            steps {
+                git branch: 'main', url: 'https://github.com/savinderpuri/knowledgehut.git'
+            }
+        }
+        stage('Build') {
+            steps {
+                sh '''cd jpetstore6
+                ./mvnw clean package -Dlicense.skip=true'''
+            }
+        }
+        stage('Test') {
+            steps {
+                junit 'jpetstore6/target/surefire-reports/*.xml'
+            }
+        }
+        stage('Prepare environment') {
+            steps {
+                sh '''wget https://downloads.apache.org/tomcat/tomcat-9/v9.0.89/bin/apache-tomcat-9.0.89.tar.gz
+                wget https://downloads.apache.org/tomcat/tomcat-9/v9.0.89/bin/apache-tomcat-9.0.89.tar.gz.asc
+                mkdir -p /tmp/apache-tomcat
+                tar -xvf apache-tomcat-9.0.89.tar.gz -C /tmp/apache-tomcat --strip-components=1
+                /bin/sed -i 's/8080/9090/g' /tmp/apache-tomcat/conf/server.xml
+                JENKINS_NODE_COOKIE=dontKillMe /tmp/apache-tomcat/bin/catalina.sh start'''
+            }
+        }
+        stage('Deploy') {
+            steps {
+                sh 'cp jpetstore6/target/jpetstore.war /tmp/apache-tomcat/webapps/'
+            }
+        }
+    }
+}
+
